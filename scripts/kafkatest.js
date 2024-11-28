@@ -1,7 +1,7 @@
 import { check } from "k6";
+import { Rate } from "k6/metrics";
 import {
     Writer,
-    Reader,
     Connection,
     SchemaRegistry,
     CODEC_SNAPPY,
@@ -11,6 +11,7 @@ import {
 const brokers = ["broker:9094"];
 const topic1 = "topic1";
 const topic2 = "topic2";
+const myRate = new Rate('Error_rate');
 
 const writer = new Writer({
     brokers: brokers,
@@ -55,7 +56,7 @@ export const options = {
             timeUnit: "1s",
             duration: "10m",
             startTime: '0s',
-            preAllocatedVUs: 0,
+            preAllocatedVUs: 10,
             maxVUs: 100,
         },
         plusfiverps: {
@@ -64,7 +65,7 @@ export const options = {
             timeUnit: "1s",
             duration: "5m",
             startTime: '5m',
-            preAllocatedVUs: 0,
+            preAllocatedVUs: 10,
             maxVUs: 100,
         },
     },
@@ -101,12 +102,14 @@ export default function () {
             },
         ];
 
-        writer.produce({ messages: messages });
+        const res = writer.produce({ messages: messages });
+        check(res, {
+            "produce was successful": (r) => r === true,
+        });
     }
 }
 
 export function teardown(data) {
     writer.close();
-
     connection.close();
 }
